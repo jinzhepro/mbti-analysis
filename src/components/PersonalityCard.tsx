@@ -62,12 +62,6 @@ export default function PersonalityCard({ personality }: PersonalityCardProps) {
             </span>
           ))}
         </div>
-
-        <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300">
-          <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-          </svg>
-        </div>
       </div>
     </Link>
   );
