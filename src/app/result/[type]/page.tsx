@@ -4,9 +4,10 @@ import { use, useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toPng } from 'html-to-image';
+import toast from 'react-hot-toast';
 import { getPersonalityByType } from '@/lib/personalities';
 import { loadHistory, formatTimestamp } from '@/lib/testHistory';
-import { getAllMatchScores, getDetailedMatchAnalysis, MatchScore } from '@/lib/compatibility';
+import { getAllMatchScores, MatchScore } from '@/lib/compatibility';
 import { getFullFunctionData, getPositionDescription } from '@/lib/cognitiveFunctions';
 import { MBTIType, TestHistoryItem } from '@/types';
 
@@ -99,14 +100,18 @@ export default function ResultPage({ params }: ResultPageProps) {
     if (platform === 'copy') {
       try {
         await navigator.clipboard.writeText(shareUrl);
-        alert('链接已复制到剪贴板！');
+        toast.success('链接已复制到剪贴板！');
       } catch (err) {
         console.error('复制失败:', err);
+        toast.error('复制失败，请重试');
       }
     } else if (platform === 'image') {
       await handleGenerateImage();
     } else if (platform === 'wechat') {
-      alert('请在微信中打开此页面进行分享');
+      toast('请在微信中打开此页面进行分享', {
+        icon: '💬',
+        duration: 3000,
+      });
     } else {
       window.open(shareLinks[platform], '_blank', 'width=600,height=400');
     }
@@ -115,7 +120,7 @@ export default function ResultPage({ params }: ResultPageProps) {
 
   const handleGenerateImage = async () => {
     if (!shareContentRef.current) return;
-    
+
     setIsGenerating(true);
     try {
       const dataUrl = await toPng(shareContentRef.current, {
@@ -123,12 +128,12 @@ export default function ResultPage({ params }: ResultPageProps) {
         pixelRatio: 2,
         backgroundColor: '#0a0a12',
       });
-      
+
       setGeneratedImageUrl(dataUrl);
       setShowImageModal(true);
     } catch (err) {
       console.error('生成图片失败:', err);
-      alert('生成图片失败，请重试');
+      toast.error('生成图片失败，请重试');
     } finally {
       setIsGenerating(false);
     }
@@ -1126,10 +1131,10 @@ export default function ResultPage({ params }: ResultPageProps) {
                         'image/png': blob,
                       }),
                     ]);
-                    alert('图片已复制到剪贴板！');
+                    toast.success('图片已复制到剪贴板！');
                   } catch (err) {
                     console.error('复制失败:', err);
-                    alert('复制失败，请截图保存');
+                    toast.error('复制失败，请截图保存');
                   }
                 }}
                 className="btn-outline-mystical px-5 py-2 rounded-full text-xs font-serif flex items-center gap-1.5"
