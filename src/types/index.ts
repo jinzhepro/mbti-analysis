@@ -45,6 +45,11 @@ export interface TestResult {
   };
 }
 
+export interface TestHistoryItem extends TestResult {
+  id: string;
+  timestamp: number;
+}
+
 export interface LikertOption {
   value: number;
   label: string;

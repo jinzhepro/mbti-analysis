@@ -1,11 +1,14 @@
 'use client';
 
-import { use, useState, useRef } from 'react';
+import { use, useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toPng } from 'html-to-image';
 import { getPersonalityByType } from '@/lib/personalities';
-import { MBTIType } from '@/types';
+import { loadHistory, formatTimestamp } from '@/lib/testHistory';
+import { getAllMatchScores, getDetailedMatchAnalysis, MatchScore } from '@/lib/compatibility';
+import { getFullFunctionData, getPositionDescription } from '@/lib/cognitiveFunctions';
+import { MBTIType, TestHistoryItem } from '@/types';
 
 interface ResultPageProps {
   params: Promise<{ type: string }>;
@@ -39,8 +42,26 @@ export default function ResultPage({ params }: ResultPageProps) {
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [showCompare, setShowCompare] = useState(false);
   const [compareType, setCompareType] = useState<MBTIType | ''>('');
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState<TestHistoryItem[]>([]);
+  const [showMatch, setShowMatch] = useState(false);
+  const [selectedRelation, setSelectedRelation] = useState<'romantic' | 'friendship' | 'work'>('romantic');
+  const [matchScores, setMatchScores] = useState<MatchScore[]>([]);
   const shareContentRef = useRef<HTMLDivElement>(null);
   const personality = getPersonalityByType(type as MBTIType);
+
+  useEffect(() => {
+    if (showHistory) {
+      setHistory(loadHistory());
+    }
+  }, [showHistory]);
+
+  useEffect(() => {
+    if (showMatch) {
+      const scores = getAllMatchScores(type as MBTIType, selectedRelation);
+      setMatchScores(scores);
+    }
+  }, [showMatch, selectedRelation, type]);
 
   if (!personality) {
     return (
@@ -63,7 +84,6 @@ export default function ResultPage({ params }: ResultPageProps) {
 
   const handleShare = async (platform: string) => {
     const url = encodeURIComponent(shareUrl);
-    const title = encodeURIComponent(shareTitle);
     const text = encodeURIComponent(`${shareTitle}\n${shareDescription}`);
     
     const shareLinks: Record<string, string> = {
@@ -392,6 +412,105 @@ export default function ResultPage({ params }: ResultPageProps) {
           </div>
         </div>
 
+        {/* 认知功能 */}
+        <div className="mb-12">
+          <div className="text-center mb-6">
+            <h2 className="text-xl font-serif text-amber-100 mb-2">认知功能栈</h2>
+            <p className="text-amber-100/40 text-sm">基于荣格八维理论的心理功能层次</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {(() => {
+              const functionData = getFullFunctionData(personality.type);
+              const positionColors = {
+                '主导': 'from-amber-500 to-orange-600',
+                '辅助': 'from-emerald-500 to-teal-600',
+                '第三': 'from-blue-500 to-cyan-600',
+                '劣势': 'from-rose-500 to-pink-600',
+              };
+              const positionIcons = {
+                '主导': '★',
+                '辅助': '◈',
+                '第三': '◆',
+                '劣势': '✧',
+              };
+
+              return (
+                <>
+                  {/* 主导功能 */}
+                  <div className="card-mystical rounded-2xl p-6 bg-gradient-to-br from-amber-900/20 to-black/30">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-amber-400/60 text-lg">{positionIcons['主导']}</span>
+                      <h3 className="text-lg font-serif text-amber-200">主导功能</h3>
+                    </div>
+                    <div className={`inline-block px-3 py-1 rounded-full text-sm font-serif font-bold bg-gradient-to-r ${positionColors['主导']} bg-clip-text text-transparent mb-3`}>
+                      {functionData.dominant.name}
+                    </div>
+                    <p className="text-xs text-amber-100/40 mb-2">{functionData.dominant.fullName}</p>
+                    <p className="text-amber-100/70 text-sm leading-relaxed mb-3">{functionData.dominant.description}</p>
+                    <p className="text-xs text-amber-100/40">{getPositionDescription('主导')}</p>
+                  </div>
+
+                  {/* 辅助功能 */}
+                  <div className="card-mystical rounded-2xl p-6 bg-gradient-to-br from-emerald-900/20 to-black/30">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-amber-400/60 text-lg">{positionIcons['辅助']}</span>
+                      <h3 className="text-lg font-serif text-amber-200">辅助功能</h3>
+                    </div>
+                    <div className={`inline-block px-3 py-1 rounded-full text-sm font-serif font-bold bg-gradient-to-r ${positionColors['辅助']} bg-clip-text text-transparent mb-3`}>
+                      {functionData.auxiliary.name}
+                    </div>
+                    <p className="text-xs text-amber-100/40 mb-2">{functionData.auxiliary.fullName}</p>
+                    <p className="text-amber-100/70 text-sm leading-relaxed mb-3">{functionData.auxiliary.description}</p>
+                    <p className="text-xs text-amber-100/40">{getPositionDescription('辅助')}</p>
+                  </div>
+
+                  {/* 第三功能 */}
+                  <div className="card-mystical rounded-2xl p-6 bg-gradient-to-br from-blue-900/20 to-black/30">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-amber-400/60 text-lg">{positionIcons['第三']}</span>
+                      <h3 className="text-lg font-serif text-amber-200">第三功能</h3>
+                    </div>
+                    <div className={`inline-block px-3 py-1 rounded-full text-sm font-serif font-bold bg-gradient-to-r ${positionColors['第三']} bg-clip-text text-transparent mb-3`}>
+                      {functionData.tertiary.name}
+                    </div>
+                    <p className="text-xs text-amber-100/40 mb-2">{functionData.tertiary.fullName}</p>
+                    <p className="text-amber-100/70 text-sm leading-relaxed mb-3">{functionData.tertiary.description}</p>
+                    <p className="text-xs text-amber-100/40">{getPositionDescription('第三')}</p>
+                  </div>
+
+                  {/* 劣势功能 */}
+                  <div className="card-mystical rounded-2xl p-6 bg-gradient-to-br from-rose-900/20 to-black/30">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-amber-400/60 text-lg">{positionIcons['劣势']}</span>
+                      <h3 className="text-lg font-serif text-amber-200">劣势功能</h3>
+                    </div>
+                    <div className={`inline-block px-3 py-1 rounded-full text-sm font-serif font-bold bg-gradient-to-r ${positionColors['劣势']} bg-clip-text text-transparent mb-3`}>
+                      {functionData.inferior.name}
+                    </div>
+                    <p className="text-xs text-amber-100/40 mb-2">{functionData.inferior.fullName}</p>
+                    <p className="text-amber-100/70 text-sm leading-relaxed mb-3">{functionData.inferior.description}</p>
+                    <p className="text-xs text-amber-100/40">{getPositionDescription('劣势')}</p>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+
+          {/* 功能说明 */}
+          <div className="mt-6 p-6 rounded-xl bg-amber-500/10 border border-amber-500/20">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="text-amber-100/60 text-sm leading-relaxed">
+                <p className="font-serif text-amber-100/80 mb-1">关于认知功能</p>
+                <p>荣格八维理论认为，每个人格类型由四种主要心理功能按层次排列组成：主导功能（最强大）、辅助功能（支持）、第三功能（发展潜力）和劣势功能（挑战与成长点）。理解这些功能有助于更深入地认识自己的思维模式和行为倾向。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* 操作按钮 */}
         <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto mb-8">
           <button
@@ -408,16 +527,43 @@ export default function ResultPage({ params }: ResultPageProps) {
           </Link>
         </div>
 
-        {/* 人格对比按钮 */}
-        <div className="text-center">
+        {/* 扩展功能按钮 */}
+        <div className="flex flex-wrap justify-center gap-4 max-w-lg mx-auto mb-8">
+          <Link
+            href={`/result/${type}/scores`}
+            className="text-amber-100/60 hover:text-amber-200 text-sm font-serif flex items-center gap-2 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            详细得分
+          </Link>
           <button
             onClick={() => setShowCompare(true)}
-            className="text-amber-100/60 hover:text-amber-200 text-sm font-serif flex items-center gap-2 mx-auto transition-colors"
+            className="text-amber-100/60 hover:text-amber-200 text-sm font-serif flex items-center gap-2 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
             </svg>
-            对比其他人格类型
+            人格对比
+          </button>
+          <button
+            onClick={() => setShowHistory(true)}
+            className="text-amber-100/60 hover:text-amber-200 text-sm font-serif flex items-center gap-2 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            测试历史
+          </button>
+          <button
+            onClick={() => setShowMatch(true)}
+            className="text-amber-100/60 hover:text-amber-200 text-sm font-serif flex items-center gap-2 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+            匹配度分析
           </button>
         </div>
       </div>
@@ -633,44 +779,342 @@ export default function ResultPage({ params }: ResultPageProps) {
         </div>
       )}
 
-      {/* 图片预览模态框 */}
-      {showImageModal && generatedImageUrl && (
+      {/* 测试历史模态框 */}
+      {showHistory && (
         <div 
           className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in-up"
-          onClick={() => setShowImageModal(false)}
+          onClick={() => setShowHistory(false)}
         >
           <div 
-            className="relative max-w-[90vw] max-h-[90vh] rounded-2xl shadow-2xl"
+            className="relative max-w-4xl w-full max-h-[80vh] overflow-y-auto rounded-2xl card-mystical p-8"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* 关闭按钮 */}
             <button
-              onClick={() => setShowImageModal(false)}
-              className="absolute -top-3 -right-3 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors z-10"
+              onClick={() => setShowHistory(false)}
+              className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
             >
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            
-            {/* 图片 */}
-            <img 
-              src={generatedImageUrl} 
-              alt="MBTI 结果分享图"
-              className="max-w-full max-h-[85vh] w-auto h-auto rounded-2xl object-contain"
-            />
-            
-            {/* 操作按钮 */}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3">
+
+            <div className="mb-6">
+              <h2 className="text-2xl font-serif text-amber-100 mb-2">测试历史</h2>
+              <p className="text-amber-100/40 text-sm">
+                最多保存最近 {10} 次测试结果
+              </p>
+            </div>
+
+            {history.length === 0 ? (
+              <div className="text-center py-16">
+                <svg className="w-16 h-16 text-amber-100/20 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-amber-100/40">暂无测试记录</p>
+                <button
+                  onClick={() => {
+                    setShowHistory(false);
+                    router.push('/test');
+                  }}
+                  className="mt-4 btn-mystical px-6 py-2 rounded-full text-sm font-serif"
+                >
+                  开始测试
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {history.map((item, index) => {
+                  const itemColors = typeColors[item.type] || typeColors.INTJ;
+                  return (
+                    <div
+                      key={item.id}
+                      className="card-mystical rounded-xl p-4 flex items-center justify-between group hover:bg-white/5 transition-all"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${itemColors.gradient} flex items-center justify-center`}>
+                          <span className="text-xl font-serif text-white font-bold">
+                            {item.type.charAt(0)}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xl font-serif ${itemColors.text} font-bold`}>
+                              {item.type}
+                            </span>
+                            {index === 0 && (
+                              <span className="px-2 py-0.5 text-xs bg-amber-500/20 text-amber-300 rounded-full border border-amber-500/30">
+                                最新
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-amber-100/40 mt-1">
+                            <span className="flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              {formatTimestamp(item.timestamp)}
+                            </span>
+                            <span>E:{item.scores.E} I:{item.scores.I} S:{item.scores.S} N:{item.scores.N} T:{item.scores.T} F:{item.scores.F} J:{item.scores.J} P:{item.scores.P}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            router.push(`/result/${item.type}`);
+                            setShowHistory(false);
+                          }}
+                          className="px-4 py-2 text-sm text-amber-100/60 hover:text-amber-200 transition-colors"
+                        >
+                          查看
+                        </button>
+                        <button
+                          onClick={() => {
+                            import('@/lib/testHistory').then(mod => {
+                              mod.deleteHistoryItem(item.id);
+                              setHistory(prev => prev.filter(h => h.id !== item.id));
+                            });
+                          }}
+                          className="w-8 h-8 flex items-center justify-center text-amber-100/30 hover:text-rose-400 transition-colors"
+                          title="删除记录"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {history.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-white/10 text-center">
+                <button
+                  onClick={() => {
+                    if (confirm('确定要清空所有测试历史吗？')) {
+                      import('@/lib/testHistory').then(mod => {
+                        mod.clearHistory();
+                        setHistory([]);
+                      });
+                    }
+                  }}
+                  className="text-amber-100/40 hover:text-rose-400 text-sm transition-colors"
+                >
+                  清空所有历史
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 匹配度分析模态框 */}
+      {showMatch && (
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in-up"
+          onClick={() => setShowMatch(false)}
+        >
+          <div
+            className="relative max-w-5xl w-full max-h-[90vh] overflow-y-auto rounded-2xl card-mystical p-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowMatch(false)}
+              className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
+            >
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <h2 className="text-2xl font-serif text-amber-100 mb-2 text-center">人格匹配度分析</h2>
+            <p className="text-amber-100/40 text-sm text-center mb-6">
+              探索你的 {type} 类型与其他人格类型的兼容性
+            </p>
+
+            {/* 关系类型选择 */}
+            <div className="flex justify-center gap-2 mb-8">
+              <button
+                onClick={() => setSelectedRelation('romantic')}
+                className={`px-6 py-3 rounded-full text-sm font-serif transition-all flex items-center gap-2 ${
+                  selectedRelation === 'romantic'
+                    ? 'bg-rose-500/20 border-rose-500/50 text-rose-300 border'
+                    : 'bg-white/5 border-white/10 text-amber-100/60 hover:bg-white/10 border'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+                恋爱关系
+              </button>
+              <button
+                onClick={() => setSelectedRelation('friendship')}
+                className={`px-6 py-3 rounded-full text-sm font-serif transition-all flex items-center gap-2 ${
+                  selectedRelation === 'friendship'
+                    ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 border'
+                    : 'bg-white/5 border-white/10 text-amber-100/60 hover:bg-white/10 border'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                友谊关系
+              </button>
+              <button
+                onClick={() => setSelectedRelation('work')}
+                className={`px-6 py-3 rounded-full text-sm font-serif transition-all flex items-center gap-2 ${
+                  selectedRelation === 'work'
+                    ? 'bg-blue-500/20 border-blue-500/50 text-blue-300 border'
+                    : 'bg-white/5 border-white/10 text-amber-100/60 hover:bg-white/10 border'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                工作合作
+              </button>
+            </div>
+
+            {/* 匹配度排行 */}
+            <div className="mb-8">
+              <h3 className="text-lg font-serif text-amber-100 mb-4 flex items-center gap-2">
+                <span className="text-amber-400/60">✦</span>
+                最佳匹配类型
+              </h3>
+              <div className="grid md:grid-cols-3 gap-4">
+                {matchScores.slice(0, 3).map((match) => {
+                  const matchColors = typeColors[match.type] || typeColors.INTJ;
+                  const matchPersonality = getPersonalityByType(match.type);
+                  return (
+                    <div
+                      key={match.type}
+                      className={`card-mystical rounded-xl p-5 bg-gradient-to-br ${matchColors.bg} to-black/30 relative overflow-hidden`}
+                    >
+                      <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-white/5 to-transparent rounded-bl-full" />
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${matchColors.gradient} flex items-center justify-center shadow-lg`}>
+                          <span className="text-lg font-serif text-white font-bold">{match.type.charAt(0)}</span>
+                        </div>
+                        <div>
+                          <div className="text-2xl font-serif">{match.type}</div>
+                          <div className="text-xs text-amber-100/40">{matchPersonality?.name}</div>
+                        </div>
+                      </div>
+                      <div className="mb-2">
+                        <div className="flex items-center justify-between text-sm mb-1">
+                          <span className="text-amber-100/60">匹配度</span>
+                          <span className={`font-serif ${
+                            match.score >= 80 ? 'text-emerald-400' :
+                            match.score >= 60 ? 'text-amber-400' : 'text-rose-400'
+                          }`}>{match.score}%</span>
+                        </div>
+                        <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-1000 ${
+                              match.score >= 80 ? 'bg-gradient-to-r from-emerald-500 to-emerald-600' :
+                              match.score >= 60 ? 'bg-gradient-to-r from-amber-500 to-amber-600' :
+                              'bg-gradient-to-r from-rose-500 to-rose-600'
+                            }`}
+                            style={{ width: `${match.score}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="text-xs text-amber-100/40">{match.description}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 完整匹配列表 */}
+            <div>
+              <h3 className="text-lg font-serif text-amber-100 mb-4 flex items-center gap-2">
+                <span className="text-amber-400/60">◈</span>
+                所有类型匹配度
+              </h3>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {matchScores.map((match) => {
+                  const matchColors = typeColors[match.type] || typeColors.INTJ;
+                  return (
+                    <div
+                      key={match.type}
+                      className="card-mystical rounded-lg p-3 flex items-center justify-between hover:bg-white/5 transition-all cursor-pointer"
+                      onClick={() => {
+                        setCompareType(match.type);
+                        setShowMatch(false);
+                        setShowCompare(true);
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${matchColors.gradient} flex items-center justify-center`}>
+                          <span className="text-sm font-serif text-white font-bold">{match.type.charAt(0)}</span>
+                        </div>
+                        <div>
+                          <div className="text-sm font-serif text-amber-100">{match.type}</div>
+                          <div className="text-xs text-amber-100/40">{match.description}</div>
+                        </div>
+                      </div>
+                      <div className={`text-sm font-bold ${
+                        match.score >= 80 ? 'text-emerald-400' :
+                        match.score >= 60 ? 'text-amber-400' : 'text-rose-400'
+                      }`}>
+                        {match.score}%
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 说明 */}
+            <div className="mt-8 pt-6 border-t border-white/10">
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                <svg className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="text-amber-100/60 text-sm leading-relaxed">
+                  <p className="font-serif text-amber-100/80 mb-1">匹配度说明</p>
+                  <p>匹配度分析基于 MBTI 理论和心理学研究，综合考虑性格互补、沟通模式、价值观一致性等因素。仅供参考，实际关系质量取决于双方的理解和努力。</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 图片预览模态框 */}
+      {showImageModal && generatedImageUrl && (
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in-up"
+          onClick={() => setShowImageModal(false)}
+        >
+          <div
+            className="relative max-w-2xl w-full rounded-2xl shadow-2xl card-mystical p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 关闭按钮 */}
+            <button
+              onClick={() => setShowImageModal(false)}
+              className="absolute top-2 right-2 w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors z-10"
+            >
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* 操作按钮 - 顶部 */}
+            <div className="flex justify-center gap-3 mb-4">
               <a
                 href={generatedImageUrl}
                 download={`MBTI-${personality.type}-结果.png`}
-                className="btn-mystical px-6 py-3 rounded-full text-sm font-serif tracking-wide flex items-center gap-2"
+                className="btn-mystical px-5 py-2 rounded-full text-xs font-serif flex items-center gap-1.5"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                下载图片
+                下载
               </a>
               <button
                 onClick={async () => {
@@ -688,13 +1132,28 @@ export default function ResultPage({ params }: ResultPageProps) {
                     alert('复制失败，请截图保存');
                   }
                 }}
-                className="btn-outline-mystical px-6 py-3 rounded-full text-sm font-serif tracking-wide flex items-center gap-2"
+                className="btn-outline-mystical px-5 py-2 rounded-full text-xs font-serif flex items-center gap-1.5"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                 </svg>
-                复制图片
+                复制
               </button>
+            </div>
+
+            {/* 图片 */}
+            <div className="flex items-center justify-center">
+              <img
+                src={generatedImageUrl}
+                alt="MBTI 结果分享图"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '70vh',
+                  width: 'auto',
+                  height: 'auto',
+                }}
+                className="rounded-2xl object-contain"
+              />
             </div>
           </div>
         </div>
@@ -862,6 +1321,38 @@ export default function ResultPage({ params }: ResultPageProps) {
             </div>
           </div>
           
+          {/* 认知功能 */}
+          <div className="mb-4">
+            <h3 className="text-[10px] font-serif text-amber-200 mb-2 flex items-center gap-1">
+              <span className="text-amber-400/60">★</span>
+              认知功能栈
+            </h3>
+            <div className="grid grid-cols-2 gap-2">
+              {(() => {
+                const functionData = getFullFunctionData(personality.type);
+                const functions = [
+                  { data: functionData.dominant, position: '主导', color: 'text-amber-400', border: 'border-amber-500/30', bg: 'from-amber-900/20' },
+                  { data: functionData.auxiliary, position: '辅助', color: 'text-emerald-400', border: 'border-emerald-500/30', bg: 'from-emerald-900/20' },
+                  { data: functionData.tertiary, position: '第三', color: 'text-blue-400', border: 'border-blue-500/30', bg: 'from-blue-900/20' },
+                  { data: functionData.inferior, position: '劣势', color: 'text-rose-400', border: 'border-rose-500/30', bg: 'from-rose-900/20' },
+                ];
+                return functions.map((func, idx) => (
+                  <div
+                    key={idx}
+                    className={`bg-gradient-to-br ${func.bg} to-black/30 rounded-lg p-2 border ${func.border}`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={`text-[11px] font-bold font-serif ${func.color}`}>{func.data.name}</span>
+                      <span className="text-[8px] text-amber-100/40">{func.position}</span>
+                    </div>
+                    <p className="text-[8px] text-amber-100/60 leading-tight line-clamp-2">{func.data.description}</p>
+                  </div>
+                ));
+              })()}
+            </div>
+            <p className="text-[7px] text-amber-100/30 mt-2 text-center">基于荣格八维心理功能理论</p>
+          </div>
+
           {/* 底部 */}
           <div className="text-center pt-3 border-t border-white/10">
             <p className="text-[9px] text-amber-100/40 tracking-wider">人格星辰 · MBTI 人格分析测试</p>

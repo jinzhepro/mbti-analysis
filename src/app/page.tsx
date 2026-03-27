@@ -1,7 +1,13 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import { personalities } from '@/lib/personalities';
 import PersonalityCard from '@/components/PersonalityCard';
 import Header from '@/components/Header';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { loadHistory, formatTimestamp, clearHistory } from '@/lib/testHistory';
+import { TestHistoryItem } from '@/types';
 
 const personalityGroups = [
   { id: 'analysts', name: '星云 · 分析家', description: '理性而睿智的思想者，洞察本质的先知', types: ['INTJ', 'INTP', 'ENTJ', 'ENTP'], icon: '✧' },
@@ -10,7 +16,36 @@ const personalityGroups = [
   { id: 'explorers', name: '风中 · 探险家', description: '大胆而自由的冒险者，瞬息的艺术家', types: ['ISTP', 'ISFP', 'ESTP', 'ESFP'], icon: '✦' },
 ];
 
+const typeColors: Record<string, { gradient: string; text: string }> = {
+  INTJ: { gradient: 'from-indigo-500 to-purple-600', text: 'text-indigo-300' },
+  INTP: { gradient: 'from-violet-500 to-purple-600', text: 'text-violet-300' },
+  ENTJ: { gradient: 'from-amber-500 to-orange-600', text: 'text-amber-300' },
+  ENTP: { gradient: 'from-orange-500 to-red-500', text: 'text-orange-300' },
+  INFJ: { gradient: 'from-emerald-500 to-teal-600', text: 'text-emerald-300' },
+  INFP: { gradient: 'from-teal-500 to-cyan-600', text: 'text-teal-300' },
+  ENFJ: { gradient: 'from-pink-500 to-rose-600', text: 'text-pink-300' },
+  ENFP: { gradient: 'from-rose-500 to-pink-600', text: 'text-rose-300' },
+  ISTJ: { gradient: 'from-slate-500 to-gray-600', text: 'text-slate-300' },
+  ISFJ: { gradient: 'from-pink-400 to-rose-500', text: 'text-pink-300' },
+  ESTJ: { gradient: 'from-blue-500 to-indigo-600', text: 'text-blue-300' },
+  ESFJ: { gradient: 'from-orange-400 to-amber-500', text: 'text-orange-300' },
+  ISTP: { gradient: 'from-cyan-500 to-blue-600', text: 'text-cyan-300' },
+  ISFP: { gradient: 'from-lime-500 to-green-600', text: 'text-lime-300' },
+  ESTP: { gradient: 'from-red-500 to-orange-600', text: 'text-red-300' },
+  ESFP: { gradient: 'from-amber-400 to-yellow-500', text: 'text-amber-300' },
+};
+
 export default function Home() {
+  const router = useRouter();
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState<TestHistoryItem[]>([]);
+
+  useEffect(() => {
+    if (showHistory) {
+      setHistory(loadHistory());
+    }
+  }, [showHistory]);
+
   return (
     <>
       <Header />
@@ -43,12 +78,15 @@ export default function Home() {
                   开始星辰探索
                 </Link>
                 <span className="text-amber-100/30 text-sm">或</span>
-                <a
-                  href="#types"
-                  className="btn-outline-mystical px-8 py-4 rounded-full text-base font-serif tracking-wide"
+                <button
+                  onClick={() => setShowHistory(true)}
+                  className="btn-outline-mystical px-8 py-4 rounded-full text-base font-serif tracking-wide flex items-center gap-2"
                 >
-                  浏览十六型
-                </a>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  查看历史
+                </button>
               </div>
             </div>
           </div>
@@ -132,6 +170,84 @@ export default function Home() {
           </div>
         </footer>
       </div>
+
+      {/* 测试历史模态框 */}
+      {showHistory && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in-up" onClick={() => setShowHistory(false)}>
+          <div className="relative max-w-4xl w-full max-h-[80vh] overflow-y-auto rounded-2xl card-mystical p-8" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setShowHistory(false)} className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <div className="mb-6">
+              <h2 className="text-2xl font-serif text-amber-100 mb-2">测试历史</h2>
+              <p className="text-amber-100/40 text-sm">最多保存最近 10 次测试结果</p>
+            </div>
+
+            {history.length === 0 ? (
+              <div className="text-center py-16">
+                <svg className="w-16 h-16 text-amber-100/20 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-amber-100/40">暂无测试记录</p>
+                <Link href="/test" className="mt-4 btn-mystical px-6 py-2 rounded-full text-sm font-serif inline-block">
+                  开始测试
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {history.map((item, index) => {
+                  const itemColors = typeColors[item.type] || typeColors.INTJ;
+                  return (
+                    <div key={item.id} className="card-mystical rounded-xl p-4 flex items-center justify-between group hover:bg-white/5 transition-all">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${itemColors.gradient} flex items-center justify-center`}>
+                          <span className="text-xl font-serif text-white font-bold">{item.type.charAt(0)}</span>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xl font-serif ${itemColors.text} font-bold`}>{item.type}</span>
+                            {index === 0 && <span className="px-2 py-0.5 text-xs bg-amber-500/20 text-amber-300 rounded-full border border-amber-500/30">最新</span>}
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-amber-100/40 mt-1">
+                            <span className="flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              {formatTimestamp(item.timestamp)}
+                            </span>
+                            <span>E:{item.scores.E} I:{item.scores.I} S:{item.scores.S} N:{item.scores.N} T:{item.scores.T} F:{item.scores.F} J:{item.scores.J} P:{item.scores.P}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => { router.push(`/result/${item.type}`); setShowHistory(false); }} className="px-4 py-2 text-sm text-amber-100/60 hover:text-amber-200 transition-colors">
+                          查看
+                        </button>
+                        <button onClick={() => { import('@/lib/testHistory').then(mod => { mod.deleteHistoryItem(item.id); setHistory(loadHistory()); }); }} className="w-8 h-8 flex items-center justify-center text-amber-100/30 hover:text-rose-400 transition-colors" title="删除记录">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {history.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-white/10 text-center">
+                <button onClick={() => { if (confirm('确定要清空所有测试历史吗？')) { clearHistory(); setHistory([]); } }} className="text-amber-100/40 hover:text-rose-400 text-sm transition-colors">
+                  清空所有历史
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }

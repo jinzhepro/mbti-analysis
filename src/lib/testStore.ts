@@ -97,3 +97,98 @@ export function calculateResult(answers: AnswerRecord): TestResult {
 
   return { type, scores };
 }
+
+// 快速测试题目数量
+const QUICK_QUESTION_COUNT = 12;
+
+// 快速测试的问题维度映射
+function getQuickQuestionDimension(questionId: number): 'EI' | 'SN' | 'TF' | 'JP' | null {
+  if (questionId >= 1 && questionId <= 3) return 'EI';
+  if (questionId >= 4 && questionId <= 6) return 'SN';
+  if (questionId >= 7 && questionId <= 9) return 'TF';
+  if (questionId >= 10 && questionId <= 12) return 'JP';
+  return null;
+}
+
+// 快速测试的问题方向映射
+function getQuickQuestionDirection(questionId: number): 'first' | 'second' {
+  const directions: Record<number, 'first' | 'second'> = {
+    // EI 维度
+    1: 'first', 2: 'second', 3: 'first',
+    // SN 维度
+    4: 'first', 5: 'second', 6: 'first',
+    // TF 维度
+    7: 'first', 8: 'second', 9: 'first',
+    // JP 维度
+    10: 'first', 11: 'second', 12: 'first',
+  };
+  return directions[questionId] || 'first';
+}
+
+// 计算快速测试得分
+export function calculateQuickScores(answers: AnswerRecord): TestResult['scores'] {
+  const scores = {
+    E: 0,
+    I: 0,
+    S: 0,
+    N: 0,
+    T: 0,
+    F: 0,
+    J: 0,
+    P: 0,
+  };
+
+  // 快速测试满分 15 分（3 题 * 5 分）
+  const maxScorePerDimension = 15;
+
+  Object.entries(answers).forEach(([questionId, score]) => {
+    const qId = parseInt(questionId);
+
+    const dimensionKey = getQuickQuestionDimension(qId);
+    if (!dimensionKey) return;
+
+    const direction = getQuickQuestionDirection(qId);
+    const mapping = dimensionMapping[dimensionKey];
+    if (!mapping) return;
+
+    if (direction === 'first') {
+      const firstLetter = mapping.first as keyof typeof scores;
+      const secondLetter = mapping.second as keyof typeof scores;
+      scores[firstLetter] += score;
+      scores[secondLetter] += (6 - score);
+    } else {
+      const firstLetter = mapping.first as keyof typeof scores;
+      const secondLetter = mapping.second as keyof typeof scores;
+      scores[secondLetter] += score;
+      scores[firstLetter] += (6 - score);
+    }
+  });
+
+  // 标准化分数到完整版比例（乘以 50/15 ≈ 3.33）
+  // 这样快速测试和完整测试的分数可以比较
+  const scale = maxScorePerDimension / 15;
+
+  return {
+    E: Math.round(scores.E * scale),
+    I: Math.round(scores.I * scale),
+    S: Math.round(scores.S * scale),
+    N: Math.round(scores.N * scale),
+    T: Math.round(scores.T * scale),
+    F: Math.round(scores.F * scale),
+    J: Math.round(scores.J * scale),
+    P: Math.round(scores.P * scale),
+  };
+}
+
+// 计算快速测试结果
+export function calculateQuickResult(answers: AnswerRecord): TestResult {
+  const scores = calculateQuickScores(answers);
+  const type = determineMBTIType(scores);
+
+  return { type, scores };
+}
+
+// 判断是否为快速测试
+export function isQuickTest(answers: AnswerRecord): boolean {
+  return Object.keys(answers).length <= QUICK_QUESTION_COUNT;
+}
